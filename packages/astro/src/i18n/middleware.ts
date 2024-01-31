@@ -45,11 +45,19 @@ export function createI18nMiddleware(
 		const response = await next();
 
 		if (response instanceof Response) {
-			const pathnameContainsDefaultLocale = url.pathname.includes(`/${defaultLocale}`);
+			// We want to detect the default locale only when it is followed
+			// by `/` or nothing, not when it is part of a URL fragment, eg.
+			// `/de/crypto/enigma` should not match if the default locale is `en`.
+			const regex = new RegExp(`/${defaultLocale}(/|$)`, 'g')
+			const pathnameContainsDefaultLocale = !!url.pathname.match(regex)
 			switch (i18n.routing) {
 				case 'pathname-prefix-other-locales': {
 					if (pathnameContainsDefaultLocale) {
-						const newLocation = url.pathname.replace(`/${defaultLocale}`, '');
+						// We want to remove the default locale only when it is followed
+						// by `/` or nothing, not when it is part of a URL fragment, eg. 
+						// `/en/crypto/enigma` should not become 
+						// `/cryptoigma` if the default locale of `en` is stripped
+						const newLocation = url.pathname.replace(regex, '$1')
 						response.headers.set('Location', newLocation);
 						return new Response(null, {
 							status: 404,
